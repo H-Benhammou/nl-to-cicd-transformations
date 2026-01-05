@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="jenkins" nsURI="https://www.jenkins.io" nsPrefix="jenkins">
+  <eAnnotations source="http://www.eclipse.org/OCL/Import">
+    <details key="ecore" value="http://www.eclipse.org/emf/2002/Ecore"/>
+  </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+    <details key="invocationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="settingDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="validationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EClass" name="JenkinsPipeline">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="HasAtLeastOneStage ValidAgentDefinition"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="HasAtLeastOneStage" value="Tuple {&#xA;&#x9;message : String = 'A Jenkins pipeline must contain at least one stage',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;stages->notEmpty()&#xA;}.status"/>
+      <details key="ValidAgentDefinition" value="Tuple {&#xA;&#x9;message : String = 'If a global agent is NONE, at least one stage must define its own agent',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;agent &lt;> null implies&#xA;&#x9;&#x9;&#x9;&#x9;agent.type &lt;> JenkinsAgentType::NONE or&#xA;&#x9;&#x9;&#x9;&#x9;stages->exists(s | s.agent &lt;> null)&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="agent" eType="#//JenkinsAgent"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="stages" lowerBound="1"
+        upperBound="-1" eType="#//JenkinsStage" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="environment" upperBound="-1"
+        eType="#//JenkinsEnvironment" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="tools" upperBound="-1"
+        eType="#//JenkinsTool" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="options" eType="#//JenkinsOptions"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="parameters" upperBound="-1"
+        eType="#//JenkinsParameter" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="triggers" upperBound="-1"
+        eType="#//JenkinsTrigger" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="post" eType="#//JenkinsPost"
+        containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="JenkinsStage">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="StageHasName StageHasStepsOrStages"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="StageHasName" value="Tuple {&#xA;&#x9;message : String = 'Jenkins requires each stage to have a name',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;name &lt;> null and name.size() > 0&#xA;}.status"/>
+      <details key="StageHasStepsOrStages" value="&#xA;    &#x9;&#x9;steps->notEmpty() or stages->notEmpty()"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="parallel" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="agent" eType="#//JenkinsAgent"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="when" eType="#//JenkinsWhen"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="environment" upperBound="-1"
+        eType="#//JenkinsEnvironment" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="tools" upperBound="-1"
+        eType="#//JenkinsTool" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="steps" lowerBound="1" upperBound="-1"
+        eType="#//JenkinsStep" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="post" eType="#//JenkinsPost"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="stages" upperBound="-1"
+        eType="#//JenkinsStage" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="JenkinsStep" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="label" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="JenkinsScriptStep" eSuperTypes="#//JenkinsStep">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="ScriptNotEmpty ValidScriptType"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="ScriptNotEmpty" value="Tuple {&#xA;&#x9;message : String = 'Script steps must contain script content',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;script &lt;> null and script.size() > 0&#xA;}.status"/>
+      <details key="ValidScriptType" value="Tuple {&#xA;&#x9;message : String = 'Script type must be specified (not NONE)',&#xA;&#x9;status : Boolean = &#xA;        &#x9;scriptType &lt;> JenkinsScriptType::NONE&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="script" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="scriptType" lowerBound="1"
+        eType="#//JenkinsScriptType"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="JenkinsScriptType">
+    <eLiterals name="NONE"/>
+    <eLiterals name="SHELL" value="1"/>
+    <eLiterals name="BATCH" value="2"/>
+    <eLiterals name="POWERSHELL" value="3"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="CheckoutScmStep" eSuperTypes="#//JenkinsStep"/>
+  <eClassifiers xsi:type="ecore:EClass" name="GitStep" eSuperTypes="#//JenkinsStep">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="GitUrlDefined GitBranchDefined"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="GitUrlDefined" value="Tuple {&#xA;&#x9;message : String = 'Git URL is mandatory',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;url &lt;> null and url.size() > 0&#xA;}.status"/>
+      <details key="GitBranchDefined" value="Tuple {&#xA;&#x9;message : String = 'Git branch must be specified',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;branch &lt;> null and branch.size() > 0&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="url" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="branch" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="credentialsId" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="changelog" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="StashStep" eSuperTypes="#//JenkinsStep">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="includes" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="excludes" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="UnstashStep" eSuperTypes="#//JenkinsStep">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ArchiveArtifactsStep" eSuperTypes="#//JenkinsStep">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="artifacts" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="allowEmptyArchive" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="fingerprint" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="onlyIfSuccessful" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="false"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="EchoStep" eSuperTypes="#//JenkinsStep">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="message" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ErrorStep" eSuperTypes="#//JenkinsStep">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="message" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ScriptStep" eSuperTypes="#//JenkinsStep">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="groovyScript" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="DirectoryStep" eSuperTypes="#//JenkinsStep">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="nestedSteps" upperBound="-1"
+        eType="#//JenkinsStep" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="JenkinsAgent">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="AgentConfigurationIsValid"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="AgentConfigurationIsValid" value="Tuple {&#xA;&#x9;message : String = 'Agent configuration must match its type',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;(type = JenkinsAgentType::ANY) or&#xA;&#x9;&#x9;&#x9;(type = JenkinsAgentType::NONE) or&#xA;&#x9;&#x9;&#x9;(type = JenkinsAgentType::LABEL and&#xA;&#x9;&#x9;&#x9;&#x9;label &lt;> null and label.size() > 0) or&#xA;&#x9;&#x9;&#x9;(type = JenkinsAgentType::DOCKER and&#xA;&#x9;&#x9;&#x9;&#x9;dockerImage &lt;> null and dockerImage.size() > 0) or&#xA;&#x9;&#x9;&#x9;(type = JenkinsAgentType::DOCKERFILE and&#xA;&#x9;&#x9;&#x9;&#x9;dockerfile &lt;> null and dockerfile.size() > 0)&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" eType="#//JenkinsAgentType"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="label" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="dockerImage" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="dockerfile" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="dockerArgs" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="customWorkspace" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="reuseNode" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="false"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="JenkinsAgentType">
+    <eLiterals name="ANY"/>
+    <eLiterals name="NONE" value="1"/>
+    <eLiterals name="LABEL" value="2"/>
+    <eLiterals name="DOCKER" value="3"/>
+    <eLiterals name="DOCKERFILE" value="4"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="JenkinsEnvironment">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="isSecret" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="false"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="JenkinsTool">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" eType="#//JenkinsToolType"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="JenkinsToolType">
+    <eLiterals name="MAVEN"/>
+    <eLiterals name="GRADLE" value="1"/>
+    <eLiterals name="JDK" value="2"/>
+    <eLiterals name="NODEJS" value="3"/>
+    <eLiterals name="DOCKER" value="4"/>
+    <eLiterals name="GIT" value="5"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="JenkinsOptions">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="disableConcurrentBuilds"
+        lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="skipDefaultCheckout" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="skipStagesAfterUnstable"
+        lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="checkoutToSubdirectory"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timestamps" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="parallelsAlwaysFailFast"
+        lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="retry" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="timeout" eType="#//JenkinsTimeout"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="buildDiscarder" eType="#//BuildDiscarder"
+        containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="JenkinsTimeout">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="time" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="unit" eType="#//TimeUnit"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="activity" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="false"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="TimeUnit">
+    <eLiterals name="SECONDS"/>
+    <eLiterals name="MINUTES" value="1"/>
+    <eLiterals name="HOURS" value="2"/>
+    <eLiterals name="DAYS" value="3"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="BuildDiscarder">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="daysToKeep" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="numToKeep" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="artifactDaysToKeep" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="artifactNumToKeep" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="JenkinsParameter" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="StringParameter" eSuperTypes="#//JenkinsParameter">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="defaultValue" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="trim" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="false"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="TextParameter" eSuperTypes="#//JenkinsParameter">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="defaultValue" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="BooleanParameter" eSuperTypes="#//JenkinsParameter">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="defaultValue" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="false"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ChoiceParameter" eSuperTypes="#//JenkinsParameter">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="choices" lowerBound="1"
+        upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="PasswordParameter" eSuperTypes="#//JenkinsParameter">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="defaultValue" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="JenkinsTrigger" abstract="true"/>
+  <eClassifiers xsi:type="ecore:EClass" name="CronTrigger" eSuperTypes="#//JenkinsTrigger">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="schedule" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="PollScmTrigger" eSuperTypes="#//JenkinsTrigger">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="schedule" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="UpstreamTrigger" eSuperTypes="#//JenkinsTrigger">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="upstreamProjects" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="threshold" eType="#//ThresholdType"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="ThresholdType">
+    <eLiterals name="SUCCESS"/>
+    <eLiterals name="UNSTABLE" value="1"/>
+    <eLiterals name="FAILURE" value="2"/>
+    <eLiterals name="ABORTED" value="3"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="JenkinsWhen">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="ConditionDefined BranchConditionValid ExpressionConditionValid"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="ConditionDefined" value="Tuple {&#xA;&#x9;message : String = 'Condition type must be specified',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;condition &lt;> null&#xA;}.status"/>
+      <details key="BranchConditionValid" value="Tuple {&#xA;&#x9;message : String = 'Branch condition requires branch name',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;condition = JenkinsConditionType::BRANCH implies&#xA;&#x9;&#x9;&#x9;&#x9;branch &lt;> null and branch.size() > 0&#xA;}.status"/>
+      <details key="ExpressionConditionValid" value="Tuple {&#xA;&#x9;message : String = 'Expression condition requires an expression',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;condition = JenkinsConditionType::EXPRESSION implies&#xA;&#x9;&#x9;&#x9;&#x9;expression &lt;> null and expression.size() > 0&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="condition" eType="#//JenkinsConditionType"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="branch" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="expression" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="tag" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="changelog" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="changeset" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="environment" upperBound="-1"
+        eType="#//JenkinsEnvironment" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="allOf" upperBound="-1"
+        eType="#//JenkinsWhen" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="anyOf" upperBound="-1"
+        eType="#//JenkinsWhen" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="not" eType="#//JenkinsWhen"
+        containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="JenkinsConditionType">
+    <eLiterals name="NONE"/>
+    <eLiterals name="BRANCH" value="1"/>
+    <eLiterals name="TAG" value="2"/>
+    <eLiterals name="ENVIRONMENT" value="3"/>
+    <eLiterals name="EXPRESSION" value="4"/>
+    <eLiterals name="ALL_OF" value="5"/>
+    <eLiterals name="ANY_OF" value="6"/>
+    <eLiterals name="NOT" value="7"/>
+    <eLiterals name="CHANGELOG" value="8"/>
+    <eLiterals name="CHANGESET" value="9"/>
+    <eLiterals name="EQUALS" value="10"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="JenkinsPost">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="AtLeastOnePostAction"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="AtLeastOnePostAction" value="Tuple {&#xA;&#x9;message : String = 'Jenkins post block must define at least one action',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;always->notEmpty() or&#xA;&#x9;&#x9;&#x9;success->notEmpty() or&#xA;&#x9;&#x9;&#x9;failure->notEmpty() or&#xA;&#x9;&#x9;&#x9;cleanup->notEmpty()&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="always" upperBound="-1"
+        eType="#//JenkinsStep" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="success" upperBound="-1"
+        eType="#//JenkinsStep" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="failure" upperBound="-1"
+        eType="#//JenkinsStep" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="unstable" upperBound="-1"
+        eType="#//JenkinsStep" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="changed" upperBound="-1"
+        eType="#//JenkinsStep" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="fixed" upperBound="-1"
+        eType="#//JenkinsStep" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="regression" upperBound="-1"
+        eType="#//JenkinsStep" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="aborted" upperBound="-1"
+        eType="#//JenkinsStep" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="unsuccessful" upperBound="-1"
+        eType="#//JenkinsStep" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="cleanup" upperBound="-1"
+        eType="#//JenkinsStep" containment="true"/>
+  </eClassifiers>
+</ecore:EPackage>

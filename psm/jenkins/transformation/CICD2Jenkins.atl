@@ -1,0 +1,500 @@
+-- @path CICD=/CICD2Jenkins/metamodels/CICD.ecore
+-- @path Jenkins=/CICD2Jenkins/metamodels/Jenkins.ecore
+
+module CICD2Jenkins;
+create OUT : Jenkins from IN : CICD;
+
+-------------------------------------------------------------------------------
+-- HELPER DEFINITIONS
+-------------------------------------------------------------------------------
+
+-- Convert CICD shell to Jenkins script type
+helper def: getScriptType(shell : String) : Jenkins!JenkinsScriptType =
+	if shell = 'bash' or shell = 'sh' or shell = 'zsh' then
+		#SHELL
+	else if shell = 'cmd' or shell = 'batch' then
+		#BATCH
+	else if shell = 'powershell' or shell = 'pwsh' then
+		#POWERSHELL
+	else
+		#SHELL
+	endif endif endif;
+
+-- Check if a stage contains multiple jobs (requires nested stages)
+helper context CICD!Stage def: hasMultipleJobs() : Boolean =
+	self.jobs->size() > 1;
+
+-- Check if a stage has a single job (can be flattened)
+helper context CICD!Stage def: hasSingleJob() : Boolean =
+	self.jobs->size() = 1;
+
+-- Check if a job is part of a multi-job stage (needs to be nested)
+helper context CICD!Job def: isInMultiJobStage() : Boolean =
+	CICD!Stage.allInstances()->exists(s | 
+		s.jobs->includes(self) and s.hasMultipleJobs()
+	);
+
+-------------------------------------------------------------------------------
+-- MAIN PIPELINE TRANSFORMATION
+-------------------------------------------------------------------------------
+
+rule Pipeline2JenkinsPipeline {
+	from
+		p : CICD!Pipeline
+	to
+		jp : Jenkins!JenkinsPipeline (
+			-- Map default agent
+			agent <- if not p.defaultAgent.oclIsUndefined() then
+						thisModule.resolveTemp(p.defaultAgent, 'ja')
+					else
+						OclUndefined
+					endif,
+			
+			-- Map stages (top-level CICD stages become Jenkins stages)
+			stages <- p.stages,
+			
+			-- Map global environment variables
+			environment <- p.globalEnvVars,
+			
+			-- Map triggers
+			triggers <- p.triggers->select(t | t.enabled = true),
+			
+			-- Generate post block if any stage has continueOnError
+			post <- if p.stages->exists(s | s.continueOnError = true) then
+						thisModule.PipelinePost(p)
+					else
+						OclUndefined
+					endif
+		)
+}
+
+-------------------------------------------------------------------------------
+-- STAGE TRANSFORMATIONS
+-------------------------------------------------------------------------------
+
+-- Rule for stages with SINGLE job (flatten to steps)
+rule Stage2JenkinsStage_SingleJob {
+	from
+		s : CICD!Stage (
+			s.hasSingleJob()
+		)
+	to
+		js : Jenkins!JenkinsStage (
+			name <- s.name,
+			
+			-- Inherit agent from the single job if it has one
+			agent <- let job : CICD!Job = s.jobs->first() in
+					 if not job.agent.oclIsUndefined() then
+					 	thisModule.resolveTemp(job.agent, 'ja')
+					 else
+					 	OclUndefined
+					 endif,
+			
+			-- Map steps directly from job using lazy rules
+			-- PLUS add stash steps for job-level artifacts
+			steps <- s.jobs->first().steps->collect(step |
+				if step.oclIsKindOf(CICD!RunStep) then
+					thisModule.RunStep2ScriptStep(step)
+				else if step.oclIsKindOf(CICD!CheckoutStep) then
+					thisModule.CheckoutStep2Git(step)
+				else if step.oclIsKindOf(CICD!UploadArtifactStep) then
+					thisModule.UploadArtifact2Stash(step)
+				else if step.oclIsKindOf(CICD!DownloadArtifactStep) then
+					thisModule.DownloadArtifact2Unstash(step)
+				else
+					OclUndefined
+				endif endif endif endif
+			)->select(e | not e.oclIsUndefined())
+			->union(
+				-- Add stash AND archive steps for artifacts defined at job level
+				s.jobs->first().artifacts->collect(artifact |
+					thisModule.Artifact2Stash(artifact)
+				)
+			)
+			->union(
+				-- Also archive for permanent storage
+				s.jobs->first().artifacts->collect(artifact |
+					thisModule.Artifact2Archive(artifact)
+				)
+			),
+			
+			-- Map job's environment variables
+			environment <- s.jobs->first().envVars,
+			
+			-- Map stage condition (takes precedence over job condition)
+			when <- if not s.condition.oclIsUndefined() then
+						thisModule.Condition2When(s.condition)
+					else
+						let job : CICD!Job = s.jobs->first() in
+						if not job.condition.oclIsUndefined() then
+							thisModule.Condition2When(job.condition)
+						else
+							OclUndefined
+						endif
+					endif,
+			
+			-- Generate post block if job allows failure or stage continues on error
+			post <- let job : CICD!Job = s.jobs->first() in
+					if job.allowFailure = true then
+						thisModule.JobPost(job)
+					else if s.continueOnError = true then
+						thisModule.StagePost(s)
+					else
+						OclUndefined
+					endif endif
+		)
+}
+
+-- Rule for stages with MULTIPLE jobs (create nested stages with parallel execution)
+rule Stage2JenkinsStage_MultipleJobs {
+	from
+		s : CICD!Stage (
+			s.hasMultipleJobs()
+		)
+	to
+		js : Jenkins!JenkinsStage (
+			name <- s.name,
+			
+			-- Parent stage typically uses pipeline default agent
+			agent <- OclUndefined,
+			
+			-- Set parallel flag to true for concurrent job execution
+			parallel <- true,
+			
+			-- Create nested stages from jobs
+			-- Jobs will be matched by Job2NestedJenkinsStage rule
+			stages <- s.jobs,
+			
+			-- Map stage condition
+			when <- if not s.condition.oclIsUndefined() then
+						thisModule.Condition2When(s.condition)
+					else
+						OclUndefined
+					endif,
+			
+			-- Generate post block if stage continues on error
+			post <- if s.continueOnError = true then
+						thisModule.StagePost(s)
+					else
+						OclUndefined
+					endif
+		)
+}
+
+-------------------------------------------------------------------------------
+-- JOB TO NESTED JENKINS STAGE (only for multi-job stages)
+-------------------------------------------------------------------------------
+
+-- Jobs become nested Jenkins stages ONLY if they're in a multi-job stage
+rule Job2NestedJenkinsStage {
+	from
+		j : CICD!Job (
+			j.isInMultiJobStage()
+		)
+	to
+		js : Jenkins!JenkinsStage (
+			name <- j.name,
+			
+			-- Map job's agent
+			agent <- if not j.agent.oclIsUndefined() then
+						thisModule.resolveTemp(j.agent, 'ja')
+					else
+						OclUndefined
+					endif,
+			
+			-- Map job's steps using lazy rules
+			-- PLUS add stash steps for job-level artifacts
+			steps <- j.steps->collect(step |
+				if step.oclIsKindOf(CICD!RunStep) then
+					thisModule.RunStep2ScriptStep(step)
+				else if step.oclIsKindOf(CICD!CheckoutStep) then
+					thisModule.CheckoutStep2Git(step)
+				else if step.oclIsKindOf(CICD!UploadArtifactStep) then
+					thisModule.UploadArtifact2Stash(step)
+				else if step.oclIsKindOf(CICD!DownloadArtifactStep) then
+					thisModule.DownloadArtifact2Unstash(step)
+				else
+					OclUndefined
+				endif endif endif endif
+			)->select(e | not e.oclIsUndefined())
+			->union(
+				-- Add stash steps for artifacts defined at job level
+				j.artifacts->collect(artifact |
+					thisModule.Artifact2Stash(artifact)
+				)
+			)
+			->union(
+				-- Also archive for permanent storage
+				j.artifacts->collect(artifact |
+					thisModule.Artifact2Archive(artifact)
+				)
+			),
+			
+			-- Map job's environment variables
+			environment <- j.envVars,
+			
+			-- Map job condition
+			when <- if not j.condition.oclIsUndefined() then
+						thisModule.Condition2When(j.condition)
+					else
+						OclUndefined
+					endif,
+			
+			-- Generate post block if job allows failure
+			post <- if j.allowFailure = true then
+						thisModule.JobPost(j)
+					else
+						OclUndefined
+					endif
+		)
+}
+
+-------------------------------------------------------------------------------
+-- AGENT TRANSFORMATIONS
+-------------------------------------------------------------------------------
+
+rule Agent2JenkinsAgent {
+	from
+		a : CICD!Agent
+	to
+		ja : Jenkins!JenkinsAgent (
+			type <- if not a.label.oclIsUndefined() and a.label <> '' then
+						#LABEL
+					else if not a.image.oclIsUndefined() and a.image <> '' then
+						#DOCKER
+					else
+						#ANY
+					endif endif,
+			
+			label <- if not a.label.oclIsUndefined() and a.label <> '' then 
+						a.label 
+					 else 
+					 	OclUndefined 
+					 endif,
+			dockerImage <- if not a.image.oclIsUndefined() and a.image <> '' then 
+							a.image 
+						   else 
+						   	OclUndefined 
+						   endif
+		)
+}
+
+-------------------------------------------------------------------------------
+-- STEP TRANSFORMATIONS (LAZY RULES)
+-------------------------------------------------------------------------------
+
+lazy rule RunStep2ScriptStep {
+	from
+		rs : CICD!RunStep
+	to
+		jss : Jenkins!JenkinsScriptStep (
+			label <- rs.name,
+			script <- rs.command,
+			scriptType <- thisModule.getScriptType(rs.shell)
+		)
+}
+
+lazy rule CheckoutStep2Git {
+	from
+		cs : CICD!CheckoutStep
+	to
+		gs : Jenkins!GitStep (
+			label <- cs.name,
+			url <- cs.repository.url,
+			branch <- if not cs.repository.branch.oclIsUndefined() then
+						cs.repository.branch
+					  else if not cs.repository.tag.oclIsUndefined() then
+					  	cs.repository.tag
+					  else
+					  	cs.repository.commit
+					  endif endif,
+			credentialsId <- if not cs.repository.credentialsId.oclIsUndefined() then
+								cs.repository.credentialsId
+							 else
+							 	OclUndefined
+							 endif
+		)
+}
+
+-- CHANGED: UploadArtifactStep now creates StashStep for inter-stage transfer
+lazy rule UploadArtifact2Stash {
+	from
+		uas : CICD!UploadArtifactStep
+	to
+		ss : Jenkins!StashStep (
+			label <- uas.name,
+			name <- uas.artifact.name,
+			includes <- uas.artifact.path
+		)
+}
+
+lazy rule DownloadArtifact2Unstash {
+	from
+		das : CICD!DownloadArtifactStep
+	to
+		us : Jenkins!UnstashStep (
+			label <- das.name,
+			name <- das.artifact.name
+		)
+}
+
+-- NEW: Lazy rule to stash artifacts defined at job level (for inter-stage use)
+lazy rule Artifact2Stash {
+	from
+		art : CICD!Artifact
+	to
+		ss : Jenkins!StashStep (
+			label <- 'Stash ' + art.name,
+			name <- art.name,
+			includes <- art.path
+		)
+}
+
+-- NEW: Lazy rule to archive artifacts defined at job level (for permanent storage)
+lazy rule Artifact2Archive {
+	from
+		art : CICD!Artifact
+	to
+		aas : Jenkins!ArchiveArtifactsStep (
+			label <- 'Archive ' + art.name,
+			artifacts <- art.path,
+			allowEmptyArchive <- false,
+			fingerprint <- true
+		)
+}
+
+-------------------------------------------------------------------------------
+-- ENVIRONMENT VARIABLE TRANSFORMATION
+-------------------------------------------------------------------------------
+
+rule EnvironmentVariable2JenkinsEnvironment {
+	from
+		ev : CICD!EnvironmentVariable
+	to
+		je : Jenkins!JenkinsEnvironment (
+			key <- ev.key,
+			value <- ev.value,
+			isSecret <- ev.isSecret
+		)
+}
+
+-------------------------------------------------------------------------------
+-- TRIGGER TRANSFORMATIONS
+-------------------------------------------------------------------------------
+
+rule PushTrigger2PollScmTrigger {
+	from
+		pt : CICD!PushTrigger (
+			pt.enabled = true
+		)
+	to
+		pst : Jenkins!PollScmTrigger (
+			-- Convert to cron schedule (poll every 5 minutes)
+			schedule <- 'H/5 * * * *'
+		)
+}
+
+rule ScheduleTrigger2CronTrigger {
+	from
+		st : CICD!ScheduleTrigger (
+			st.enabled = true
+		)
+	to
+		ct : Jenkins!CronTrigger (
+			schedule <- st.cronExpression
+		)
+}
+
+-------------------------------------------------------------------------------
+-- CONDITION TO JENKINS WHEN
+-------------------------------------------------------------------------------
+
+-- Lazy rule for condition mapping
+lazy rule Condition2When {
+	from
+		c : CICD!Condition
+	to
+		jw : Jenkins!JenkinsWhen (
+			condition <- if c.type = #ALWAYS then
+							#EXPRESSION
+						 else if c.type = #ON_BRANCH then
+						 	#BRANCH
+						 else if c.type = #ON_TAG then
+						 	#TAG
+						 else if c.type = #EXPRESSION then
+						 	#EXPRESSION
+						 else
+						 	#EXPRESSION
+						 endif endif endif endif,
+			
+			expression <- if c.type = #ALWAYS then
+							'true'
+						  else if c.type = #EXPRESSION then
+						  	c.expression
+						  else
+						  	OclUndefined
+						  endif endif,
+			
+			branch <- if c.type = #ON_BRANCH then
+						if not c.branchPattern.oclIsUndefined() then
+							c.branchPattern
+						else
+							'*'
+						endif
+					  else
+					  	OclUndefined
+					  endif,
+			
+			tag <- if c.type = #ON_TAG then
+					'*'
+				   else
+				   	OclUndefined
+				   endif
+		)
+}
+
+-------------------------------------------------------------------------------
+-- POST BLOCK LAZY RULES
+-------------------------------------------------------------------------------
+
+lazy rule PipelinePost {
+	from
+		p : CICD!Pipeline
+	to
+		jp : Jenkins!JenkinsPost (
+			cleanup <- Sequence{thisModule.CreateEchoStep('Pipeline execution completed')}
+		)
+}
+
+lazy rule StagePost {
+	from
+		s : CICD!Stage
+	to
+		jp : Jenkins!JenkinsPost (
+			failure <- Sequence{thisModule.CreateEchoStep('Stage ' + s.name + ' failed but continuing')},
+			cleanup <- Sequence{thisModule.CreateEchoStep('Stage ' + s.name + ' cleanup')}
+		)
+}
+
+lazy rule JobPost {
+	from
+		j : CICD!Job
+	to
+		jp : Jenkins!JenkinsPost (
+			failure <- Sequence{thisModule.CreateEchoStep('Job ' + j.name + ' failed but allowed to continue')},
+			always <- Sequence{thisModule.CreateEchoStep('Job ' + j.name + ' completed')}
+		)
+}
+
+-------------------------------------------------------------------------------
+-- HELPER LAZY RULES
+-------------------------------------------------------------------------------
+
+lazy rule CreateEchoStep {
+	from
+		message : String
+	to
+		es : Jenkins!EchoStep (
+			message <- message
+		)
+}

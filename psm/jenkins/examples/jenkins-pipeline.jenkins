@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<jenkins:JenkinsPipeline xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:jenkins="https://www.jenkins.io">
+  <agent type="LABEL" label="docker-agent"/>
+  <stages name="Checkout">
+    <agent type="LABEL" label="git-runner"/>
+    <steps xsi:type="jenkins:GitStep" label="Checkout code" url="https://github.com/example/repo.git" branch="main"/>
+  </stages>
+  <stages name="Build and Test" parallel="true">
+    <when condition="BRANCH" branch="main"/>
+    <stages name="Compile">
+      <agent type="DOCKER" dockerImage="maven:3.8-jdk-11"/>
+      <environment key="MAVEN_OPTS" value="-Xmx1024m"/>
+      <steps xsi:type="jenkins:JenkinsScriptStep" label="Compile code" script="mvn clean compile" scriptType="SHELL"/>
+      <steps xsi:type="jenkins:JenkinsScriptStep" label="Package artifacts" script="mvn package" scriptType="SHELL"/>
+      <steps xsi:type="jenkins:StashStep" label="Stash build-output" name="build-output" includes="target/*.jar"/>
+      <steps xsi:type="jenkins:ArchiveArtifactsStep" label="Archive build-output" artifacts="target/*.jar" fingerprint="true"/>
+    </stages>
+    <stages name="Unit Tests">
+      <agent type="DOCKER" dockerImage="maven:3.8-jdk-11"/>
+      <when condition="EXPRESSION" expression="true"/>
+      <environment key="TEST_ENV" value="ci"/>
+      <steps xsi:type="jenkins:JenkinsScriptStep" label="Run tests" script="mvn test" scriptType="SHELL"/>
+      <steps xsi:type="jenkins:JenkinsScriptStep" label="Generate coverage" script="mvn jacoco:report" scriptType="SHELL"/>
+      <steps xsi:type="jenkins:StashStep" label="Stash test-results" name="test-results" includes="target/surefire-reports/*.xml"/>
+      <steps xsi:type="jenkins:ArchiveArtifactsStep" label="Archive test-results" artifacts="target/surefire-reports/*.xml" fingerprint="true"/>
+    </stages>
+    <stages name="Integration Tests">
+      <agent type="DOCKER" dockerImage="maven:3.8-jdk-11"/>
+      <environment key="DB_URL" value="jdbc:h2:mem:testdb"/>
+      <steps xsi:type="jenkins:JenkinsScriptStep" label="Run integration tests" script="mvn verify -Pintegration-tests" scriptType="SHELL"/>
+      <post>
+        <always xsi:type="jenkins:EchoStep" message="Job Integration Tests completed"/>
+        <failure xsi:type="jenkins:EchoStep" message="Job Integration Tests failed but allowed to continue"/>
+      </post>
+    </stages>
+  </stages>
+  <stages name="Quality and Security" parallel="true">
+    <when condition="EXPRESSION" expression="env.SKIP_QUALITY != 'true'"/>
+    <stages name="Code Quality">
+      <agent type="DOCKER" dockerImage="sonarsource/sonar-scanner-cli"/>
+      <steps xsi:type="jenkins:UnstashStep" label="Download build artifacts" name="build-output"/>
+      <steps xsi:type="jenkins:JenkinsScriptStep" label="Run SonarQube" script="sonar-scanner" scriptType="SHELL"/>
+    </stages>
+    <stages name="Security Scan">
+      <agent type="DOCKER" dockerImage="owasp/dependency-check"/>
+      <environment key="SCAN_LEVEL" value="high"/>
+      <steps xsi:type="jenkins:UnstashStep" label="Download build artifacts" name="build-output"/>
+      <steps xsi:type="jenkins:JenkinsScriptStep" label="Run OWASP check" script="dependency-check.sh" scriptType="SHELL"/>
+    </stages>
+  </stages>
+  <stages name="Deploy">
+    <agent type="LABEL" label="deploy-agent"/>
+    <when condition="TAG" tag="*"/>
+    <environment key="DEPLOY_ENV" value="production"/>
+    <environment key="API_KEY" value="${SECRET_API_KEY}" isSecret="true"/>
+    <steps xsi:type="jenkins:UnstashStep" label="Download artifacts" name="build-output"/>
+    <steps xsi:type="jenkins:JenkinsScriptStep" label="Deploy application" script="./deploy.sh production" scriptType="SHELL"/>
+    <steps xsi:type="jenkins:JenkinsScriptStep" label="Verify deployment" script="curl https://api.example.com/health" scriptType="SHELL"/>
+  </stages>
+  <environment key="ENVIRONMENT" value="production"/>
+  <environment key="VERSION" value="1.0.0"/>
+  <triggers xsi:type="jenkins:PollScmTrigger" schedule="H/5 * * * *"/>
+</jenkins:JenkinsPipeline>

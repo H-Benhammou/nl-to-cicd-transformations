@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cicd:Pipeline
+    xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:cicd="cicdhttp://www.example.org/cicd/1.0"
+    name="NestedStagesPipeline"
+    description="Pipeline with nested stages for parallel execution">
+
+    <!-- Default agent -->
+    <defaultAgent label="docker-agent"/>
+
+    <!-- Global environment variables -->
+    <globalEnvVars key="ENVIRONMENT" value="production" isSecret="false"/>
+    <globalEnvVars key="VERSION" value="1.0.0" isSecret="false"/>
+
+    <!-- Repository -->
+    <repositories url="https://github.com/example/repo.git" branch="main"/>
+
+    <!-- Trigger -->
+    <triggers xsi:type="cicd:PushTrigger" enabled="true">
+        <branches>main</branches>
+        <branches>develop</branches>
+    </triggers>
+
+    <!-- Stage 1: Single job stage (should flatten) -->
+    <stages name="Checkout">
+        <jobs name="Clone Repository">
+            <steps xsi:type="cicd:CheckoutStep" 
+                   name="Checkout code"
+                   repository="//@repositories.0"/>
+            <agent label="git-runner"/>
+        </jobs>
+    </stages>
+
+    <!-- Stage 2: Multi-job stage (should create nested stages) -->
+    <stages name="Build and Test">
+        <condition type="ON_BRANCH" branchPattern="main"/>
+        
+        <!-- Job 1: Compile -->
+        <jobs name="Compile">
+            <steps xsi:type="cicd:RunStep"
+                   name="Compile code"
+                   command="mvn clean compile"
+                   shell="bash"/>
+            <steps xsi:type="cicd:RunStep"
+                   name="Package artifacts"
+                   command="mvn package"
+                   shell="bash"/>
+            <envVars key="MAVEN_OPTS" value="-Xmx1024m" isSecret="false"/>
+            <artifacts name="build-output" path="target/*.jar" expiration="30"/>
+            <agent image="maven:3.8-jdk-11"/>
+        </jobs>
+        
+        <!-- Job 2: Unit Tests -->
+        <jobs name="Unit Tests">
+            <steps xsi:type="cicd:RunStep"
+                   name="Run tests"
+                   command="mvn test"
+                   shell="bash"/>
+            <steps xsi:type="cicd:RunStep"
+                   name="Generate coverage"
+                   command="mvn jacoco:report"
+                   shell="bash"/>
+            <envVars key="TEST_ENV" value="ci" isSecret="false"/>
+            <artifacts name="test-results" path="target/surefire-reports/*.xml" expiration="7"/>
+            <agent image="maven:3.8-jdk-11"/>
+            <condition type="ALWAYS"/>
+        </jobs>
+        
+        <!-- Job 3: Integration Tests -->
+        <jobs name="Integration Tests" allowFailure="true">
+            <steps xsi:type="cicd:RunStep"
+                   name="Run integration tests"
+                   command="mvn verify -Pintegration-tests"
+                   shell="bash"/>
+            <envVars key="DB_URL" value="jdbc:h2:mem:testdb" isSecret="false"/>
+            <agent image="maven:3.8-jdk-11"/>
+        </jobs>
+    </stages>
+
+    <!-- Stage 3: Another multi-job stage with dependencies -->
+    <stages name="Quality and Security">
+        <condition type="EXPRESSION" expression="env.SKIP_QUALITY != 'true'"/>
+        
+        <!-- Job 1: Code Quality -->
+        <jobs name="Code Quality">
+            <steps xsi:type="cicd:DownloadArtifactStep"
+                   name="Download build artifacts"
+                   artifact="//@stages.1/@jobs.0/@artifacts.0"/>
+            <steps xsi:type="cicd:RunStep"
+                   name="Run SonarQube"
+                   command="sonar-scanner"
+                   shell="bash"/>
+            <agent image="sonarsource/sonar-scanner-cli"/>
+        </jobs>
+        
+        <!-- Job 2: Security Scan -->
+        <jobs name="Security Scan">
+            <steps xsi:type="cicd:DownloadArtifactStep"
+                   name="Download build artifacts"
+                   artifact="//@stages.1/@jobs.0/@artifacts.0"/>
+            <steps xsi:type="cicd:RunStep"
+                   name="Run OWASP check"
+                   command="dependency-check.sh"
+                   shell="bash"/>
+            <envVars key="SCAN_LEVEL" value="high" isSecret="false"/>
+            <agent image="owasp/dependency-check"/>
+        </jobs>
+    </stages>
+
+    <!-- Stage 4: Single job deployment stage -->
+    <stages name="Deploy">
+        <condition type="ON_TAG" branchPattern="v*"/>
+        <jobs name="Deploy to Production" timeout="7200">
+            <steps xsi:type="cicd:DownloadArtifactStep"
+                   name="Download artifacts"
+                   artifact="//@stages.1/@jobs.0/@artifacts.0"/>
+            <steps xsi:type="cicd:RunStep"
+                   name="Deploy application"
+                   command="./deploy.sh production"
+                   shell="bash"/>
+            <steps xsi:type="cicd:RunStep"
+                   name="Verify deployment"
+                   command="curl https://api.example.com/health"
+                   shell="bash"/>
+            <envVars key="DEPLOY_ENV" value="production" isSecret="false"/>
+            <envVars key="API_KEY" value="${SECRET_API_KEY}" isSecret="true"/>
+            <agent label="deploy-agent"/>
+        </jobs>
+    </stages>
+
+</cicd:Pipeline>

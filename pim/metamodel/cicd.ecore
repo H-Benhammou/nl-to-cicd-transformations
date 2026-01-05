@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="cicd" nsURI="cicdhttp://www.example.org/cicd/1.0" nsPrefix="cicd">
+  <eAnnotations source="http://www.eclipse.org/OCL/Import">
+    <details key="ecore" value="http://www.eclipse.org/emf/2002/Ecore"/>
+  </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+    <details key="invocationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="settingDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="validationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EClass" name="Pipeline">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="hasStagesXorJobs hasName hasTriggers hasEnabledTrigger uniqueGlobalEnvKeys uniqueRepositoryUrls jobsHaveAgentIfNoDefault artifactDependenciesSatisfied dependenciesRespectStageOrder"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="hasStagesXorJobs" value="Tuple {&#xA;&#x9;message : String = 'Pipeline must have either stages OR direct jobs (not both, not neither)',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;(stages->notEmpty() and jobs->isEmpty()) or (stages->isEmpty() and jobs->notEmpty())&#xA;}.status"/>
+      <details key="hasName" value="Tuple {&#xA;&#x9;message : String = 'Pipeline must have a non-empty name',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;name &lt;> null and name.size() > 0&#xA;}.status"/>
+      <details key="hasTriggers" value="Tuple {&#xA;&#x9;message : String = 'Pipeline must have at least one trigger',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;triggers->notEmpty()&#xA;}.status"/>
+      <details key="hasEnabledTrigger" value="Tuple {&#xA;&#x9;message : String = 'Pipeline must have at least one enabled trigger',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;triggers->exists(t | t.enabled = true)&#xA;}.status"/>
+      <details key="uniqueGlobalEnvKeys" value="Tuple {&#xA;&#x9;message : String = 'Global environment variable keys must be unique',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;globalEnvVars->isUnique(key)&#xA;}.status"/>
+      <details key="uniqueRepositoryUrls" value="Tuple {&#xA;&#x9;message : String = 'Repository URLs should be unique within pipeline',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;repositories->isUnique(url)&#xA;}.status"/>
+      <details key="jobsHaveAgentIfNoDefault" value="Tuple {&#xA;&#x9;message : String = 'If no default agent, all jobs must specify their own agent',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;defaultAgent = null implies&#xA;&#x9;&#x9;&#x9;&#x9;jobs->forAll(j | j.agent &lt;> null) and&#xA;&#x9;&#x9;&#x9;&#x9;stages->forAll(s | s.jobs->forAll(j | j.agent &lt;> null))&#xA;}.status"/>
+      <details key="artifactDependenciesSatisfied" value="Tuple {&#xA;&#x9;message : String = 'All downloaded artifacts must be uploaded by some job',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;jobs->forAll(j |&#xA;&#x9;&#x9;&#x9;&#x9;j.steps->select(s | s.oclIsKindOf(DownloadArtifactStep))&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;.oclAsType(DownloadArtifactStep)->forAll(das |&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;jobs->exists(otherJob |&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;otherJob.artifacts->includes(das.artifact) and otherJob &lt;> j&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;)&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;)&#xA;&#x9;&#x9;&#x9;) and&#xA;&#x9;&#x9;&#x9;stages->forAll(stage |&#xA;&#x9;&#x9;&#x9;&#x9;stage.jobs->forAll(j |&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;j.steps->select(s | s.oclIsKindOf(DownloadArtifactStep))&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;.oclAsType(DownloadArtifactStep)->forAll(das |&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;stages.jobs->exists(otherJob |&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;otherJob.artifacts->includes(das.artifact) and otherJob &lt;> j&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;) or&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;jobs->exists(otherJob |&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;otherJob.artifacts->includes(das.artifact)&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;)&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;)&#xA;&#x9;&#x9;&#x9;&#x9;)&#xA;&#x9;&#x9;&#x9;)&#xA;}.status"/>
+      <details key="dependenciesRespectStageOrder" value="Tuple {&#xA;&#x9;message : String = 'Job dependencies should respect stage execution order',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;stages->forAll(stage |&#xA;&#x9;&#x9;&#x9;&#x9;stage.jobs->forAll(job |&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;job.dependsOn->forAll(depJob |&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;depJob.oclContainer().oclIsKindOf(Stage) implies&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;let depStage : Stage = depJob.oclContainer().oclAsType(Stage) in&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;depStage = stage or&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;stages->indexOf(depStage) &lt;= stages->indexOf(stage)&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;)&#xA;&#x9;&#x9;&#x9;&#x9;)&#xA;&#x9;&#x9;&#x9;)&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="defaultAgent" eType="#//Agent"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="stages" upperBound="-1"
+        eType="#//Stage" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="jobs" upperBound="-1" eType="#//Job"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="triggers" lowerBound="1"
+        upperBound="-1" eType="#//Trigger" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="globalEnvVars" upperBound="-1"
+        eType="#//EnvironmentVariable" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="repositories" upperBound="-1"
+        eType="#//Repository" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Stage">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="hasName hasJobs uniqueJobNames validConditionType"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="hasName" value="Tuple {&#xA;&#x9;message : String = 'Stage must have a non-empty name',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;name &lt;> null and name.size() > 0&#xA;}.status"/>
+      <details key="hasJobs" value="Tuple {&#xA;&#x9;message : String = 'Stage must contain at least one job',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;jobs->notEmpty()&#xA;}.status"/>
+      <details key="uniqueJobNames" value="Tuple {&#xA;&#x9;message : String = 'Job names within a stage must be unique',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;jobs->isUnique(name)&#xA;}.status"/>
+      <details key="validConditionType" value="Tuple {&#xA;&#x9;message : String = 'Stage condition type should be appropriate for stage-level execution',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;condition &lt;> null implies&#xA;&#x9;&#x9;&#x9;&#x9;condition.type = ConditionType::ALWAYS or&#xA;&#x9;&#x9;&#x9;&#x9;condition.type = ConditionType::ON_BRANCH or&#xA;&#x9;&#x9;&#x9;&#x9;condition.type = ConditionType::ON_TAG or&#xA;&#x9;&#x9;&#x9;&#x9;condition.type = ConditionType::ON_PULL_REQUEST or&#xA;&#x9;&#x9;&#x9;&#x9;condition.type = ConditionType::EXPRESSION&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="continueOnError" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="jobs" lowerBound="1" upperBound="-1"
+        eType="#//Job" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="condition" eType="#//Condition"
+        containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Job">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="hasName hasSteps positiveTimeout uniqueEnvKeys uniqueArtifactNames noCyclicDependencies dependenciesInSamePipeline hasAgent"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="hasName" value="Tuple {&#xA;&#x9;message : String = 'Job must have a non-empty name',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;name &lt;> null and name.size() > 0&#xA;}.status"/>
+      <details key="hasSteps" value="Tuple {&#xA;&#x9;message : String = 'Job must contain at least one step',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;steps->notEmpty()&#xA;}.status"/>
+      <details key="positiveTimeout" value="Tuple {&#xA;&#x9;message : String = 'Job timeout must be positive',&#xA;&#x9;status : Boolean = &#xA;        timeout > 0&#xA;}.status"/>
+      <details key="uniqueEnvKeys" value="Tuple {&#xA;&#x9;message : String = 'Environment variable keys must be unique within job',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;envVars->isUnique(key)&#xA;}.status"/>
+      <details key="uniqueArtifactNames" value="Tuple {&#xA;&#x9;message : String = 'Artifact names must be unique within job',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;artifacts->isUnique(name)&#xA;}.status"/>
+      <details key="noCyclicDependencies" value="Tuple {&#xA;&#x9;message : String = 'Job cannot have circular dependencies',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;not dependsOn->closure(dependsOn)->includes(self)&#xA;}.status"/>
+      <details key="dependenciesInSamePipeline" value="Tuple {&#xA;&#x9;message : String = 'Job dependencies must be from the same pipeline or stage',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;dependsOn->forAll(dep |&#xA;&#x9;&#x9;&#x9;&#x9;(oclContainer().oclIsKindOf(Pipeline) and &#xA;&#x9;&#x9;&#x9;&#x9; dep.oclContainer().oclIsKindOf(Pipeline) and&#xA;&#x9;&#x9;&#x9;&#x9; oclContainer() = dep.oclContainer()) or&#xA;&#x9;&#x9;&#x9;&#x9;(oclContainer().oclIsKindOf(Stage) and &#xA;&#x9;&#x9;&#x9;&#x9; dep.oclContainer().oclIsKindOf(Stage))&#xA;&#x9;&#x9;&#x9;)&#xA;}.status"/>
+      <details key="hasAgent" value="Tuple {&#xA;&#x9;message : String = 'Job must have an agent (own or pipeline default)',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;agent &lt;> null or&#xA;&#x9;&#x9;&#x9;(&#xA;&#x9;&#x9;&#x9;&#x9;oclContainer().oclIsKindOf(Stage) and&#xA;&#x9;&#x9;&#x9;&#x9;oclContainer().oclAsType(Stage)&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;.oclContainer().oclAsType(Pipeline)&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;.defaultAgent &lt;> null&#xA;&#x9;&#x9;&#x9;) or&#xA;&#x9;&#x9;&#x9;(&#xA;&#x9;&#x9;&#x9;&#x9;oclContainer().oclIsKindOf(Pipeline) and&#xA;&#x9;&#x9;&#x9;&#x9;oclContainer().oclAsType(Pipeline)&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;.defaultAgent &lt;> null&#xA;&#x9;&#x9;&#x9;)&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" defaultValueLiteral="3600"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="allowFailure" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="workingDirectory" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="steps" lowerBound="1" upperBound="-1"
+        eType="#//Step" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="agent" eType="#//Agent"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="envVars" upperBound="-1"
+        eType="#//EnvironmentVariable" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="artifacts" upperBound="-1"
+        eType="#//Artifact" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dependsOn" upperBound="-1"
+        eType="#//Job"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="condition" eType="#//Condition"
+        containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Step" abstract="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="hasName"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="hasName" value="Tuple {&#xA;&#x9;message : String = 'Step must have a non-empty name',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;name &lt;> null and name.size() > 0&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="continueOnError" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="false"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="RunStep" eSuperTypes="#//Step">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="hasCommand hasShell validShell"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="hasCommand" value="Tuple {&#xA;&#x9;message : String = 'RunStep must have a non-empty command',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;command &lt;> null and command.size() > 0&#xA;}.status"/>
+      <details key="hasShell" value="Tuple {&#xA;&#x9;message : String = 'RunStep must specify a shell',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;shell &lt;> null and shell.size() > 0&#xA;}.status"/>
+      <details key="validShell" value="Tuple {&#xA;&#x9;message : String = 'Shell should be a recognized type (bash, sh, powershell, python, cmd)',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;Set{'bash', 'sh', 'powershell', 'python', 'cmd', 'pwsh', 'zsh'}->includes(shell)&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="command" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="shell" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
+        defaultValueLiteral=""/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="CheckoutStep" eSuperTypes="#//Step">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="hasRepository repositoryFromPipeline"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="hasRepository" value="Tuple {&#xA;&#x9;message : String = 'CheckoutStep must reference a repository',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;repository &lt;> null&#xA;}.status"/>
+      <details key="repositoryFromPipeline" value="Tuple {&#xA;&#x9;message : String = 'Referenced repository must belong to the pipeline',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;let currentJob : Job = oclContainer().oclAsType(Job) in&#xA;&#x9;&#x9;&#x9;let pipeline : Pipeline =&#xA;&#x9;&#x9;&#x9;&#x9;if currentJob.oclContainer().oclIsKindOf(Stage) then&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;currentJob.oclContainer().oclAsType(Stage)&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;.oclContainer().oclAsType(Pipeline)&#xA;&#x9;&#x9;&#x9;&#x9;else&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;currentJob.oclContainer().oclAsType(Pipeline)&#xA;&#x9;&#x9;&#x9;&#x9;endif&#xA;&#x9;&#x9;&#x9;in&#xA;&#x9;&#x9;&#x9;&#x9;pipeline.repositories->includes(repository)&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="repository" lowerBound="1"
+        eType="#//Repository"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="UploadArtifactStep" eSuperTypes="#//Step">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="hasArtifact artifactFromSameJob"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="hasArtifact" value="Tuple {&#xA;&#x9;message : String = 'UploadArtifactStep must reference an artifact',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;artifact &lt;> null&#xA;}.status"/>
+      <details key="artifactFromSameJob" value="Tuple {&#xA;&#x9;message : String = 'Uploaded artifact must belong to the containing job',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;let currentJob : Job = oclContainer().oclAsType(Job) in&#xA;&#x9;&#x9;&#x9;&#x9;currentJob.artifacts->includes(artifact)&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="artifact" lowerBound="1"
+        eType="#//Artifact"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="DownloadArtifactStep" eSuperTypes="#//Step">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="hasArtifact notFromSameJob artifactExistsInPipeline"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="hasArtifact" value="Tuple {&#xA;&#x9;message : String = 'DownloadArtifactStep must reference an artifact',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;artifact &lt;> null&#xA;}.status"/>
+      <details key="notFromSameJob" value="Tuple {&#xA;&#x9;message : String = 'Cannot download artifact produced by the same job',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;not oclContainer().oclAsType(Job).artifacts->includes(artifact)&#xA;}.status"/>
+      <details key="artifactExistsInPipeline" value="Tuple {&#xA;&#x9;message : String = 'Downloaded artifact must be produced by another job in the pipeline',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;let currentJob : Job = oclContainer().oclAsType(Job) in&#xA;&#x9;&#x9;&#x9;let pipeline : Pipeline = &#xA;&#x9;&#x9;&#x9;&#x9;if currentJob.oclContainer().oclIsKindOf(Stage) then&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;currentJob.oclContainer().oclAsType(Stage).oclContainer().oclAsType(Pipeline)&#xA;&#x9;&#x9;&#x9;&#x9;else&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;currentJob.oclContainer().oclAsType(Pipeline)&#xA;&#x9;&#x9;&#x9;&#x9;endif&#xA;&#x9;&#x9;&#x9;in&#xA;&#x9;&#x9;&#x9;&#x9;(pipeline.jobs->exists(j | j &lt;> currentJob and j.artifacts->includes(artifact))) or&#xA;&#x9;&#x9;&#x9;&#x9;(pipeline.stages.jobs->exists(j | j &lt;> currentJob and j.artifacts->includes(artifact)))&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="artifact" lowerBound="1"
+        eType="#//Artifact"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="fromJob" eType="#//Job"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Agent">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="hasLabelOrImage"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="hasLabelOrImage" value="Tuple {&#xA;&#x9;message : String = 'Agent must specify either label or image',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;(label &lt;> null and label.size() > 0) or&#xA;&#x9;&#x9;&#x9;(image &lt;> null and image.size() > 0)&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="label" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="specifications" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Repository">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="hasUrl validUrlFormat exactlyOneReference"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="hasUrl" value="Tuple {&#xA;&#x9;message : String = 'Repository must have a non-empty URL',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;url &lt;> null and url.size() > 0&#xA;}.status"/>
+      <details key="validUrlFormat" value="Tuple {&#xA;&#x9;message : String = 'Repository URL should be a valid format',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;url.matches('(https?|git|ssh)://.*') or url.matches('git@.*')&#xA;}.status"/>
+      <details key="exactlyOneReference" value="Tuple {&#xA;&#x9;message : String = 'Repository must specify exactly one of: branch, tag, or commit',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;let hasBranch : Boolean = branch &lt;> null and branch.size() > 0 in&#xA;&#x9;&#x9;&#x9;let hasTag : Boolean = tag &lt;> null and tag.size() > 0 in&#xA;&#x9;&#x9;&#x9;let hasCommit : Boolean = commit &lt;> null and commit.size() > 0 in&#xA;&#x9;&#x9;&#x9;(hasBranch and not hasTag and not hasCommit) or&#xA;&#x9;&#x9;&#x9;(not hasBranch and hasTag and not hasCommit) or&#xA;&#x9;&#x9;&#x9;(not hasBranch and not hasTag and hasCommit)&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="url" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="branch" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="tag" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="commit" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="credentialsId" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Artifact">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="hasName hasPath positiveExpiration validPath"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="hasName" value="Tuple {&#xA;&#x9;message : String = 'Artifact must have a non-empty name',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;name &lt;> null and name.size() > 0&#xA;}.status"/>
+      <details key="hasPath" value="Tuple {&#xA;&#x9;message : String = 'Artifact must have a non-empty path',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;path &lt;> null and path.size() > 0&#xA;}.status"/>
+      <details key="positiveExpiration" value="Tuple {&#xA;&#x9;message : String = 'Artifact expiration must be positive',&#xA;&#x9;status : Boolean = &#xA;        expiration > 0&#xA;}.status"/>
+      <details key="validPath" value="Tuple {&#xA;&#x9;message : String = 'Artifact path should not start with / or contain \\',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;not path.startsWith('/') and not path.matches('.*\\\\.*')&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="expiration" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" defaultValueLiteral="30"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="EnvironmentVariable">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="hasKey hasValue validKeyFormat preferUppercaseKey"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="hasKey" value="Tuple {&#xA;&#x9;message : String = 'Environment variable must have a non-empty key',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;key &lt;> null and key.size() > 0&#xA;}.status"/>
+      <details key="hasValue" value="Tuple {&#xA;&#x9;message : String = 'Environment variable must have a value',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;value &lt;> null&#xA;}.status"/>
+      <details key="validKeyFormat" value="Tuple {&#xA;&#x9;message : String = 'Environment variable key must be valid (letters, numbers, underscores, start with letter/_)',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;key.matches('[A-Za-z_][A-Za-z0-9_]*')&#xA;}.status"/>
+      <details key="preferUppercaseKey" value="Tuple {&#xA;&#x9;message : String = 'Environment variable key should preferably be uppercase',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;key = key.toUpper()&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="isSecret" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Condition">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="hasType expressionForExpressionType expressionOnlyForExpressionType alwaysTypeNeedsNoExpression"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="hasType" value="Tuple {&#xA;&#x9;message : String = 'Condition must have a type',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;type &lt;> null&#xA;}.status"/>
+      <details key="expressionForExpressionType" value="Tuple {&#xA;&#x9;message : String = 'Expression is required when condition type is EXPRESSION',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;type = ConditionType::EXPRESSION implies&#xA;&#x9;&#x9;&#x9;&#x9;(expression &lt;> null and expression.size() > 0)&#xA;}.status"/>
+      <details key="expressionOnlyForExpressionType" value="Tuple {&#xA;&#x9;message : String = 'Expression should only be set when type is EXPRESSION',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;(expression &lt;> null and expression.size() > 0) implies&#xA;&#x9;&#x9;&#x9;&#x9;type = ConditionType::EXPRESSION&#xA;}.status"/>
+      <details key="alwaysTypeNeedsNoExpression" value="Tuple {&#xA;&#x9;message : String = 'ALWAYS condition should not have an expression',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;type = ConditionType::ALWAYS implies&#xA;&#x9;&#x9;&#x9;&#x9;(expression.oclIsUndefined() or expression.size() = 0)&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="expression" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" eType="#//ConditionType"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="branchPattern" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="ConditionType">
+    <eLiterals name="ALWAYS"/>
+    <eLiterals name="ON_SUCCESS" value="1"/>
+    <eLiterals name="ON_FAILURE" value="2"/>
+    <eLiterals name="ON_BRANCH" value="3"/>
+    <eLiterals name="ON_TAG" value="4" literal="ON_TAG"/>
+    <eLiterals name="ON_PULL_REQUEST" value="5"/>
+    <eLiterals name="EXPRESSION" value="6"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Trigger" abstract="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="enabledIsBoolean"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="enabledIsBoolean" value="&#xA;&#x9;&#x9;&#x9;enabled = true or enabled = false"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="enabled" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="PushTrigger" eSuperTypes="#//Trigger">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="hasBranches branchesNotEmpty validBranchPatterns"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="hasBranches" value="Tuple {&#xA;&#x9;message : String = 'PushTrigger must specify at least one branch',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;branches->notEmpty()&#xA;}.status"/>
+      <details key="branchesNotEmpty" value="Tuple {&#xA;&#x9;message : String = 'PushTrigger branches must not be empty strings',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;branches->forAll(b | b &lt;> null and b.size() > 0)&#xA;}.status"/>
+      <details key="validBranchPatterns" value="Tuple {&#xA;&#x9;message : String = 'Branch patterns should be valid (no invalid characters)',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;branches->forAll(b | not b.matches('.*[&lt;>:\&quot;|?].*'))&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="branches" upperBound="-1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ScheduleTrigger" eSuperTypes="#//Trigger">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="hasCronExpression validCronFormat nonEmptyCronFields"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="hasCronExpression" value="Tuple {&#xA;&#x9;message : String = 'ScheduleTrigger must have a cron expression',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;cronExpression &lt;> null and cronExpression.size() > 0&#xA;}.status"/>
+      <details key="validCronFormat" value="Tuple {&#xA;&#x9;message : String = 'Cron expression should have 5 or 6 fields',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;cronExpression.matches('[^\\s]+\\s+[^\\s]+\\s+[^\\s]+\\s+[^\\s]+\\s+[^\\s]+(\\s+[^\\s]+)?')&#xA;}.status"/>
+      <details key="nonEmptyCronFields" value="Tuple {&#xA;&#x9;message : String = 'Cron expression fields should not be empty',&#xA;&#x9;status : Boolean = &#xA;&#x9;&#x9;&#x9;not cronExpression.matches('.*\\s\\s.*')&#xA;}.status"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cronExpression" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ManualTrigger" eSuperTypes="#//Trigger">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="requiresApproval" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+  </eClassifiers>
+</ecore:EPackage>
